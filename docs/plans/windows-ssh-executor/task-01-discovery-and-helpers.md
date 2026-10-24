@@ -108,4 +108,3 @@ Verification used a separate Linux source tree and bounded test containers.
 Shell copies were normalized to LF and their executable modes restored after
 transfer from the Windows worktree; these are fixture preparation steps.
 Native Windows SSH session startup has not yet been tested.
-
