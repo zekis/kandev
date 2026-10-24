@@ -188,3 +188,18 @@ func TestSSHWindowsCleanupDoesNotTraverseJunctions(t *testing.T) {
 		t.Fatal("cleanup must verify each directory before deletion")
 	}
 }
+
+func TestSSHWindowsLongCommandTransport(t *testing.T) {
+	body := strings.Repeat("Write-Output 'λ'\n", 600)
+	command := windowsPowerShellCommand(body)
+	script, staged, err := windowsLongCommandScript(command)
+	if err != nil || !staged || !strings.Contains(script, body) {
+		t.Fatalf("long script was not preserved: %v %v", staged, err)
+	}
+	if _, staged, err := windowsLongCommandScript("echo " + strings.Repeat("x", 9000)); err != nil || staged {
+		t.Fatal("Unix command was reinterpreted")
+	}
+	if _, _, err := windowsLongCommandScript("powershell.exe -NoLogo -NoProfile -NonInteractive -EncodedCommand " + strings.Repeat("!", 9000)); err == nil {
+		t.Fatal("malformed encoded script accepted")
+	}
+}

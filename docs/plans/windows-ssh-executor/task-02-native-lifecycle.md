@@ -123,3 +123,10 @@ The Windows host needed Git and Node installed before agent use. Codex CLI
 and the ACP bridge were installed and the Codex CLI version check succeeded.
 A provider-authenticated inference prompt remains an operator acceptance check;
 no provider credential was copied or inference usage incurred by these tests.
+
+Final transport validation exposed the Windows exec command-length boundary
+when a hardened stop script grew beyond cmd.exe limits. Commands over the
+bounded encoded-command threshold now stage a BOM-encoded PowerShell file in
+a verified private directory, preserve caller data on stdin, and remove the
+file after completion. The long-command regression and both real Windows
+integration tests passed, including confirmed controller shutdown.

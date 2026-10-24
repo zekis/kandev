@@ -132,6 +132,17 @@ func runSSHCommand(ctx context.Context, client *ssh.Client, cmd string) (stdout,
 // command string — that keeps them out of the remote shell's argv and out
 // of `ps aux` / `/proc/PID/cmdline` for the brief window the script runs.
 func runSSHCommandStdin(ctx context.Context, client *ssh.Client, cmd string, stdin io.Reader) (stdout, stderr string, err error) {
+	script, staged, err := windowsLongCommandScript(cmd)
+	if err != nil {
+		return "", "", err
+	}
+	if staged {
+		return runLongWindowsSSHCommand(ctx, client, script, stdin)
+	}
+	return runRawSSHCommandStdin(ctx, client, cmd, stdin)
+}
+
+func runRawSSHCommandStdin(ctx context.Context, client *ssh.Client, cmd string, stdin io.Reader) (stdout, stderr string, err error) {
 	session, err := openSSHSession(ctx, client)
 	if err != nil {
 		return "", "", fmt.Errorf("ssh: new session: %w", err)
