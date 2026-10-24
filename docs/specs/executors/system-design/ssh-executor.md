@@ -312,3 +312,8 @@ task and session state.
 ## Open questions
 
 (All v1 design decisions resolved during planning. None outstanding at spec-approval time.)
+
+## Proposed native Windows extension
+
+The proposed [Windows design](ssh-executor-windows.md) extends this lifecycle
+for native Windows destinations. It is not yet implemented.

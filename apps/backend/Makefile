@@ -57,6 +57,7 @@ ifeq ($(OS)$(MSYSTEM),Windows_NT)
   # Cross-compile prefixes for agentctl helpers bundled with the host build.
   # cmd has no Unix env-var-prefix syntax; `set X=Y&` chains `set` and the next
   # command in the same shell.
+  GO_WINDOWS_AMD64 = set CGO_ENABLED=0& set GOOS=windows& set GOARCH=amd64&
   GO_LINUX_AMD64 = set CGO_ENABLED=0& set GOOS=linux& set GOARCH=amd64&
   GO_LINUX_ARM64 = set CGO_ENABLED=0& set GOOS=linux& set GOARCH=arm64&
   GO_DARWIN_ARM64 = set CGO_ENABLED=0& set GOOS=darwin& set GOARCH=arm64&
@@ -86,6 +87,7 @@ else
   endef
   CGO_PREFIX = CGO_ENABLED=1
   DEADCODE_ENV = GOTOOLCHAIN=$(DEADCODE_GO_TOOLCHAIN)
+  GO_WINDOWS_AMD64 = CGO_ENABLED=0 GOOS=windows GOARCH=amd64
   GO_LINUX_AMD64 = CGO_ENABLED=0 GOOS=linux GOARCH=amd64
   GO_LINUX_ARM64 = CGO_ENABLED=0 GOOS=linux GOARCH=arm64
   GO_DARWIN_ARM64 = CGO_ENABLED=0 GOOS=darwin GOARCH=arm64
@@ -281,7 +283,7 @@ build-agentctl:
 build-agentctl-dev: $(DEV_AGENTCTL_TARGETS)
 
 ## Build all remote agentctl helpers used by SSH/Docker/Sprites executors.
-build-agentctl-remote: build-agentctl-linux build-agentctl-linux-arm64 build-agentctl-darwin-arm64 build-agentctl-darwin-amd64
+build-agentctl-remote: build-agentctl-linux build-agentctl-linux-arm64 build-agentctl-darwin-arm64 build-agentctl-darwin-amd64 build-agentctl-windows-amd64
 
 ## Build agentctl for linux/amd64 (used by Docker/Sprites and Linux SSH hosts)
 build-agentctl-linux:
@@ -543,3 +545,9 @@ help:
 	@echo "  deps          Download dependencies"
 	@echo "  build-cross   Build for Linux, macOS, and Windows"
 	@echo "  help          Show this help message"
+
+## Build agentctl for native Windows/amd64 SSH destinations.
+.PHONY: build-agentctl-windows-amd64
+build-agentctl-windows-amd64:
+	@$(call MKDIR,$(BUILD_DIR))
+	$(GO_WINDOWS_AMD64) $(GO) build -trimpath $(GOFLAGS) -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/agentctl-windows-amd64.exe ./cmd/agentctl

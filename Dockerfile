@@ -103,6 +103,7 @@ COPY bundle/bin/agentctl-linux-amd64   /app/apps/backend/bin/agentctl-linux-amd6
 COPY bundle/bin/agentctl-linux-arm64   /app/apps/backend/bin/agentctl-linux-arm64
 COPY bundle/bin/agentctl-darwin-arm64  /app/apps/backend/bin/agentctl-darwin-arm64
 COPY bundle/bin/agentctl-darwin-amd64  /app/apps/backend/bin/agentctl-darwin-amd64
+COPY bundle/bin/agentctl-windows-amd64.exe /app/apps/backend/bin/agentctl-windows-amd64.exe
 COPY bundle/bin/agentctl               /usr/local/bin/agentctl
 COPY docker-entrypoint.sh              /usr/local/bin/docker-entrypoint.sh
 
@@ -114,6 +115,7 @@ RUN chmod +x \
         /app/apps/backend/bin/agentctl-linux-arm64 \
         /app/apps/backend/bin/agentctl-darwin-arm64 \
         /app/apps/backend/bin/agentctl-darwin-amd64 \
+        /app/apps/backend/bin/agentctl-windows-amd64.exe \
         /usr/local/bin/agentctl \
         /usr/local/bin/docker-entrypoint.sh && \
     ln -s /app/apps/backend/bin/kandev /usr/local/bin/kandev && \

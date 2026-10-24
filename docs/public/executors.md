@@ -542,14 +542,16 @@ SSH is implemented as a separate remote connection per session. Kandev uploads a
 
 ### Host requirements
 
-- Linux `amd64`/`arm64` or macOS `amd64`/`arm64`;
+- Linux `amd64`/`arm64`, macOS `amd64`/`arm64`, or native Windows `amd64`;
 - SSH public-key authentication and SFTP;
 - `bash` on Linux or `zsh` on macOS by default, or a compatible configured login shell;
 - TCP forwarding enabled by `sshd` and enough `MaxSessions` capacity;
 - the selected agent command already installed and visible to a login shell;
 - writable remote home and adequate disk/process capacity.
 
-Released Kandev bundles include helpers for all four platform combinations. The full automated SSH task E2E target currently exercises a Linux/amd64 container; other platform gates and helper selection are unit-tested.
+Bundles include helpers for these five platform combinations. Windows requires OpenSSH Server with SFTP and TCP forwarding, Windows PowerShell 5.1 or later, Git for Windows, and the selected agent toolchain on the target. Windows ARM64 is rejected. Native Windows lifecycle tests cover upload, launch, authenticated forwarding, repository checkout, file access, terminal sessions, reconnect, recovery, and stop through a pinned gateway; a provider-authenticated inference prompt is a separate operator check.
+
+On Windows, Kandev uses PowerShell commands and a detached WMI supervisor, stores immutable checksum-qualified helpers, and verifies PID, creation time, executable path and account before stopping a controller. Private ACLs are established before credential or launch-data uploads. The built-in primary-repository setup has a native PowerShell implementation. Custom prepare, repository setup and cleanup scripts must be native PowerShell; POSIX placeholder expansion and contribution checkout variants are not currently supported on Windows. Unix defaults are unchanged.
 
 ### Create the connection
 
@@ -570,7 +572,7 @@ The remote-auth card is built from the currently enabled agents. Depending on an
 
 OpenCode credential copies merge top-level provider entries with the existing remote `auth.json`. Remote-only providers remain, and the selected host entry replaces the same provider on the remote. If either file is unreadable or is not a JSON object, Kandev leaves the remote file unchanged and reports the credential-copy error.
 
-These transfers write sensitive material under the remote user's home and are best-effort. Verify authentication on the remote after saving. Although the profile editor also stores Git name/email controls for SSH, the current SSH runtime does not apply them; configure Git identity on the remote host yourself.
+These transfers write sensitive material under the remote user's home. Unix transfers remain best-effort; Windows credential-copy errors, including private ACL failures, stop launch. Verify authentication on the remote after saving. Native Windows default preparation applies the profile Git name/email to the checkout. Unix SSH users should configure Git identity on the remote host.
 
 </details>
 

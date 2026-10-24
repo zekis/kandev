@@ -21,6 +21,12 @@ Kandev has native Windows x64 desktop and npm/npx releases. WSL 2 remains useful
 | WSL 2 CLI                     | Linux-only agent tools and shell scripts                   | Browser launch and Windows/WSL path interop are dependency-bound                   |
 | Native source checkout        | Contributors testing Windows-specific code                 | Manual toolchain and curated Windows test subset; not the simplest product install |
 
+## Remote Windows over SSH
+
+A Linux or macOS Kandev backend can run a native Windows x64 executor through OpenSSH, directly or through one pinned ProxyJump gateway. See [SSH executors](executors.md#ssh) for prerequisites, credentials, scripts and limitations. Install Git and the selected agent toolchain on the Windows account first. Kandev supplies its Windows controller; WSL is not required.
+
+Native PowerShell preparation, file access, ConPTY terminals, reconnect, restart recovery and owned controller stop are covered by the Windows SSH integration fixture. Agent login and a provider-authenticated task must still be verified for your account.
+
 ## Native desktop installation
 
 The recommended Windows product path is the x64 NSIS installer from [GitHub Releases](https://github.com/kdlbs/kandev/releases):

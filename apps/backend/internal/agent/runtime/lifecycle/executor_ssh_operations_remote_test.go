@@ -171,7 +171,7 @@ func TestNormalizeSSHRemotePlatformAcceptsUnameAliases(t *testing.T) {
 		{osName: "linux", arch: "amd64", wantGOOS: "linux", wantArch: "amd64", wantSupported: true},
 		{osName: "  Linux  ", arch: "  X86_64 ", wantGOOS: "linux", wantArch: "amd64", wantSupported: true},
 		{osName: "DARWIN", arch: "AARCH64", wantGOOS: "darwin", wantArch: "arm64", wantSupported: true},
-		{osName: "Windows_NT", arch: "x86_64", wantGOOS: "", wantArch: "amd64", wantSupported: false},
+		{osName: "Windows_NT", arch: "x86_64", wantGOOS: "windows", wantArch: "amd64", wantSupported: true},
 		{osName: "Linux", arch: "i686", wantGOOS: "linux", wantArch: "", wantSupported: false},
 	}
 	for _, tc := range tests {

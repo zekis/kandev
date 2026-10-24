@@ -446,6 +446,9 @@ func sshOrphanAttributeSession(inv sshOrphanInventory, proc sshOrphanProcessReco
 //
 //nolint:dupword // shell branches contain repeated `done` tokens.
 func sshOrphanInventoryCommand(resolvedRoot string) string {
+	if isWindowsRemotePath(resolvedRoot) {
+		return windowsOrphanInventoryCommand(resolvedRoot)
+	}
 	root := strings.TrimSuffix(resolvedRoot, "/") + "/tasks"
 	script := "ROOT=" + shellQuote(root) + `
 ps -eo pid=,ppid=,command= 2>/dev/null | while read -r pid ppid command; do
@@ -555,6 +558,12 @@ func remoteCommandLineFlagValue(line, flag string) (string, bool) {
 			continue
 		}
 		rest := line[idx+len(needle):]
+		if len(rest) > 1 && (rest[0] == '"' || rest[0] == 39) {
+			if end := strings.IndexByte(rest[1:], rest[0]); end >= 0 {
+				return rest[1 : end+1], true
+			}
+			return "", false
+		}
 		end := strings.IndexAny(rest, " \t")
 		if end < 0 {
 			end = len(rest)
@@ -677,6 +686,12 @@ fi`, shellQuote(pidFile), remove)
 //
 //nolint:dupword // shell branches contain repeated `fi` tokens.
 func sshOrphanStopCommand(pid int, taskDirPath, sessionDir string) string {
+	if isWindowsRemotePath(taskDirPath) {
+		if sessionDir == "" {
+			return windowsPowerShellCommand("throw 'Windows orphan has no durable session identity'")
+		}
+		return windowsStopCommand(sessionDir, pid)
+	}
 	cleanup := boolStringTrue
 	if sessionDir != "" {
 		cleanup = sshOrphanSessionDirCleanupCommand(sessionDir)

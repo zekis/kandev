@@ -642,7 +642,11 @@ func emitRemoteHelperProgress(callback PrepareProgressCallback, platform SSHRemo
 }
 
 func agentctlBinaryName(platform SSHRemotePlatform) string {
-	return fmt.Sprintf("agentctl-%s-%s", platform.GOOS, platform.GOARCH)
+	name := fmt.Sprintf("agentctl-%s-%s", platform.GOOS, platform.GOARCH)
+	if platform.GOOS == sshRemoteGOOSWindows {
+		name += ".exe"
+	}
+	return name
 }
 
 func agentctlBinaryEnvNames(platform SSHRemotePlatform) []string {

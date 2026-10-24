@@ -109,6 +109,9 @@ type sshClientRunner struct {
 // profile puts on PATH, and a missing git must read as "cannot answer" rather
 // than being caused by us.
 func (r sshClientRunner) Run(ctx context.Context, cmd string) (string, string, error) {
+	if strings.HasPrefix(cmd, "powershell.exe ") {
+		return runSSHCommand(ctx, r.client, cmd)
+	}
 	return runSSHCommand(ctx, r.client, WrapLoginShell(r.shell, cmd))
 }
 
@@ -144,6 +147,22 @@ func (r *SSHTaskDirReclaimer) Reclaim(
 	defer cancel()
 
 	root, err := r.resolveWorkdirRoot(ctx, workdirRoot)
+	if isWindowsRemotePath(taskDir) && (workdirRoot == "~" || strings.HasPrefix(workdirRoot, "~/") || workdirRoot == "") {
+		out, _, probeErr := r.runner.Run(ctx, windowsPowerShellCommand("[Environment]::GetFolderPath('UserProfile')"))
+		if probeErr != nil {
+			return SSHReclaimOutcomeFailed, SSHReclaimVerdict{}, probeErr
+		}
+		home, normalizeErr := normalizeWindowsRemotePath(strings.TrimSpace(out))
+		if normalizeErr != nil {
+			return SSHReclaimOutcomeFailed, SSHReclaimVerdict{}, normalizeErr
+		}
+		suffix := strings.TrimPrefix(workdirRoot, "~")
+		if workdirRoot == "" {
+			suffix = "/.kandev"
+		}
+		root = home + suffix
+		err = nil
+	}
 	if err != nil {
 		return SSHReclaimOutcomeFailed, SSHReclaimVerdict{}, err
 	}
@@ -365,7 +384,9 @@ func validateSSHReclaimPath(workdirRoot, taskDir string) error {
 	if root == "" || path == "" {
 		return fmt.Errorf("%w: empty workspace root or task directory", ErrSSHReclaimPathRefused)
 	}
-	if !strings.HasPrefix(root, "/") || !strings.HasPrefix(path, "/") {
+	unixPaths := strings.HasPrefix(root, "/") && strings.HasPrefix(path, "/")
+	windowsPaths := isWindowsRemotePath(root) && isWindowsRemotePath(path)
+	if !unixPaths && !windowsPaths {
 		return fmt.Errorf("%w: %q is not an absolute path under %q", ErrSSHReclaimPathRefused, path, root)
 	}
 	root = trimTrailingSlashes(root)
@@ -397,6 +418,9 @@ func trimTrailingSlashes(path string) string {
 // test asserts against the exact string the production path sends.
 
 func gitProbeCmd(dir, args string) string {
+	if isWindowsRemotePath(dir) {
+		return windowsPowerShellCommand(windowsGitCommand(dir, strings.Fields(args)...))
+	}
 	return "git -C " + shellQuote(dir) + " " + args
 }
 
@@ -405,6 +429,9 @@ func sshReclaimHomeCmd() string {
 }
 
 func sshReclaimChildReposCmd(taskDir string) string {
+	if isWindowsRemotePath(taskDir) {
+		return windowsReclaimChildReposCommand(taskDir)
+	}
 	return "find " + shellQuote(taskDir) + " -mindepth 2 -maxdepth 2 -name .git"
 }
 
@@ -425,10 +452,16 @@ func sshReclaimStashCmd(dir string) string {
 }
 
 func sshReclaimRemoveCmd(taskDir string) string {
+	if isWindowsRemotePath(taskDir) {
+		return windowsReclaimRemoveCommand(taskDir)
+	}
 	return "rm -rf -- " + shellQuote(taskDir)
 }
 
 func sshReclaimExistsCmd(taskDir string) string {
+	if isWindowsRemotePath(taskDir) {
+		return windowsPowerShellCommand("if(Test-Path -LiteralPath " + windowsPowerShellQuote(taskDir) + ") {[Console]::Write('exists')}else{[Console]::Write('gone')}")
+	}
 	return "test -e " + shellQuote(taskDir) +
 		" && printf %s " + shellQuote(sshReclaimExistsMarker) +
 		" || printf %s " + shellQuote(sshReclaimGoneMarker)

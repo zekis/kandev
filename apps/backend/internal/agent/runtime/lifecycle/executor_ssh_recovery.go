@@ -219,6 +219,9 @@ func (r *SSHExecutor) readSSHRecoveryInstanceInfo(
 	if controlPort == 0 {
 		logPath := shellQuote(identity.sessionDir + "/agentctl.log")
 		command := "head -c 32768 " + logPath + " 2>/dev/null; printf '\\n'; tail -c 32768 " + logPath + " 2>/dev/null"
+		if isWindowsRemotePath(identity.sessionDir) {
+			command = windowsReadFileCommand(identity.sessionDir+"/agentctl.log", 100)
+		}
 		output, _, err := runSSHCommand(ctx, client, command)
 		if err != nil {
 			return nil, 0, fmt.Errorf("read exact agentctl session log: %w", err)
@@ -241,7 +244,7 @@ func (r *SSHExecutor) readSSHRecoveryInstanceInfo(
 		return nil, 0, fmt.Errorf("read exact agentctl instance: %w", err)
 	}
 	if info == nil || info.ID != identity.nativeID || info.SessionID != record.SessionID ||
-		info.TaskID != record.TaskID || info.Port != identity.port || info.WorkspacePath != identity.taskDir {
+		info.TaskID != record.TaskID || info.Port != identity.port || !sameSSHWorkspacePath(info.WorkspacePath, identity.taskDir) {
 		return nil, 0, errors.New("live agentctl metadata does not match the persisted SSH instance")
 	}
 	return info, controlPort, nil
@@ -339,6 +342,7 @@ func (r *SSHExecutor) registerRecoveredSSHState(
 		remoteTaskDir:    identity.taskDir,
 		authToken:        identity.authToken,
 		reusingProcess:   true,
+		platform:         windowsPlatformForPath(identity.sessionDir),
 		metadata:         metadata,
 		prepareEnv:       make(map[string]string),
 		runtimeAPITunnel: runtimeTunnel,

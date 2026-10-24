@@ -3,6 +3,7 @@ package lifecycle
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -170,6 +171,9 @@ func addMethodAgentIDs(ids map[string]bool, metadata map[string]interface{}, key
 }
 
 func (r *SSHExecutor) runPrepareScript(ctx context.Context, client *ssh.Client, taskDir string, req *ExecutorCreateRequest, platform SSHRemotePlatform, agentctlBin string) error {
+	if platform.GOOS == sshRemoteGOOSWindows {
+		return r.runWindowsPrepareScript(ctx, client, taskDir, req, agentctlBin)
+	}
 	script, err := r.resolvePrepareScript(req, taskDir, agentctlBin)
 	if err != nil {
 		return err
@@ -242,6 +246,9 @@ func normalizeSSHRemotePath(path string) string {
 }
 
 func (r *SSHExecutor) verifyPrimaryCheckout(ctx context.Context, client *ssh.Client, taskDir string, req *ExecutorCreateRequest, platform SSHRemotePlatform) error {
+	if platform.GOOS == sshRemoteGOOSWindows {
+		return verifyWindowsPrimaryCheckout(ctx, client, taskDir, req)
+	}
 	targetURL := getMetadataString(req.Metadata, "repository_clone_url")
 	if targetURL == "" {
 		return nil
@@ -281,6 +288,15 @@ func (r *SSHExecutor) runCleanupScript(ctx context.Context, client *ssh.Client, 
 	}
 	if taskDir == "" {
 		return fmt.Errorf("ssh: cleanup task directory is missing")
+	}
+	if platform.GOOS == sshRemoteGOOSWindows {
+		if strings.Contains(script, "{{") {
+			return errors.New("ssh: Windows cleanup scripts must use PowerShell and literal paths")
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), sshCleanupTimeout)
+		defer cancel()
+		_, _, err := runWindowsScript(cleanupCtx, client, "Set-Location -LiteralPath "+windowsPowerShellQuote(taskDir)+"\n"+script, env)
+		return err
 	}
 	resolved, err := r.resolveSSHScript(&ExecutorCreateRequest{Metadata: metadata, Env: env}, taskDir, "", script)
 	if err != nil {

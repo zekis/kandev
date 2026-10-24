@@ -25,10 +25,11 @@ var (
 	remoteHelperCommitPattern  = regexp.MustCompile(`^(?:[a-f0-9]{40}|[a-f0-9]{64})$`)
 	remoteHelperVersionPattern = regexp.MustCompile(`^v?[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
 	remoteHelperPlatformAssets = map[string]string{
-		"linux/amd64":  "agentctl-linux-amd64.gz",
-		"linux/arm64":  "agentctl-linux-arm64.gz",
-		"darwin/amd64": "agentctl-darwin-amd64.gz",
-		"darwin/arm64": "agentctl-darwin-arm64.gz",
+		"linux/amd64":   "agentctl-linux-amd64.gz",
+		"linux/arm64":   "agentctl-linux-arm64.gz",
+		"darwin/amd64":  "agentctl-darwin-amd64.gz",
+		"darwin/arm64":  "agentctl-darwin-arm64.gz",
+		"windows/amd64": "agentctl-windows-amd64.exe.gz",
 	}
 )
 
@@ -97,7 +98,8 @@ func validateRemoteHelperManifest(manifest RemoteHelperManifest, expectedVersion
 	if manifest.Variant != RemoteHelperVariantStandard && manifest.Variant != RemoteHelperVariantFull {
 		return fmt.Errorf("remote helper manifest variant %q is invalid", manifest.Variant)
 	}
-	if len(manifest.Helpers) != len(remoteHelperPlatformAssets) {
+	// Four-record manifests predate the optional Windows helper.
+	if len(manifest.Helpers) < 4 || len(manifest.Helpers) > len(remoteHelperPlatformAssets) {
 		return fmt.Errorf("remote helper manifest must contain exactly %d platform records", len(remoteHelperPlatformAssets))
 	}
 	seen := make(map[string]struct{}, len(manifest.Helpers))
@@ -109,6 +111,11 @@ func validateRemoteHelperManifest(manifest RemoteHelperManifest, expectedVersion
 			return err
 		}
 		seen[helper.Platform] = struct{}{}
+	}
+	for _, platform := range []string{"linux/amd64", "linux/arm64", "darwin/amd64", "darwin/arm64"} {
+		if _, ok := seen[platform]; !ok {
+			return fmt.Errorf("remote helper manifest has no record for %s", platform)
+		}
 	}
 	return nil
 }

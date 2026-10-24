@@ -25,8 +25,12 @@ type shellProcessLifecycleHandle struct {
 	job winproc.KillOnCloseJob
 }
 
-func installShellProcessLifecycle(cmd *exec.Cmd) (shellProcessLifecycleHandle, error) {
-	job, err := winproc.InstallKillOnCloseJobForSuspendedCommand(cmd)
+func installShellProcessLifecycle(cmd *exec.Cmd, runningPTY ...bool) (shellProcessLifecycleHandle, error) {
+	install := winproc.InstallKillOnCloseJobForSuspendedCommand
+	if len(runningPTY) > 0 && runningPTY[0] {
+		install = winproc.InstallKillOnCloseJobForCommand
+	}
+	job, err := install(cmd)
 	if err != nil {
 		return shellProcessLifecycleHandle{}, err
 	}

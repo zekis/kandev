@@ -58,7 +58,9 @@ func (r *SSHExecutor) uploadCredentials(
 	if err != nil {
 		return err
 	}
-	r.runAuthSetupScripts(ctx, client, req, catalog, platform)
+	if platform.GOOS != sshRemoteGOOSWindows {
+		r.runAuthSetupScripts(ctx, client, req, catalog, platform)
+	}
 	var uploadErr error
 	if len(fileMethods) > 0 {
 		uploadErr = UploadCredentialFiles(ctx, uploader, fileMethods, homeDir, r.logger)
@@ -212,6 +214,9 @@ func (r *SSHExecutor) resolveRemoteAuthHomeDir(
 		r.logger.Debug("using remote auth home override", zap.String("home_dir", override))
 		return override, nil
 	}
+	if platform.GOOS == sshRemoteGOOSWindows {
+		return expandRemoteHome(ctx, client, "~")
+	}
 	shell := sshShellForRemote(req.Metadata, platform)
 	out, _, err := runSSHCommand(ctx, client, WrapLoginShell(shell, `printf %s "$HOME"`))
 	if err != nil {
@@ -357,7 +362,13 @@ func isSFTPNotExist(err error) bool {
 	return errors.As(err, &statusErr) && statusErr.FxCode() == sftp.ErrSSHFxNoSuchFile
 }
 
-func (u *sshFileUploader) WriteFile(_ context.Context, path string, data []byte, mode os.FileMode) error {
+func (u *sshFileUploader) WriteFile(ctx context.Context, path string, data []byte, mode os.FileMode) error {
+	if isWindowsRemotePath(path) {
+		if err := ensureWindowsPrivateDirectory(ctx, u.client, parentDir(path)); err != nil {
+			return err
+		}
+		return sftpUploadBytes(u.client, path, data, mode, ctx)
+	}
 	c, err := sftp.NewClient(u.client)
 	if err != nil {
 		return fmt.Errorf("sftp: new client: %w", err)

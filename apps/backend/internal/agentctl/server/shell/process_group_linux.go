@@ -16,7 +16,7 @@ func configureShellProcess(_ *exec.Cmd) {}
 
 type shellProcessLifecycleHandle struct{}
 
-func installShellProcessLifecycle(_ *exec.Cmd) (shellProcessLifecycleHandle, error) {
+func installShellProcessLifecycle(_ *exec.Cmd, _ ...bool) (shellProcessLifecycleHandle, error) {
 	return shellProcessLifecycleHandle{}, nil
 }
 

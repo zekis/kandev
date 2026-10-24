@@ -274,8 +274,14 @@ func (r *SSHExecutor) CreateInstance(ctx context.Context, req *ExecutorCreateReq
 		}
 	}()
 	r.report(req.OnProgress, "Connecting to SSH host", PrepareStepCompleted, "")
-	if err := r.preflightGitHubCredentialBroker(baseCtx, client, req, SSHRemotePlatform{}); err != nil {
-		return nil, err
+	if hasManagedGitCredentialBrokerEnv(req.Env) {
+		info, err := detectRemoteInfo(baseCtx, client)
+		if err != nil {
+			return nil, err
+		}
+		if err := r.preflightGitHubCredentialBroker(baseCtx, client, req, info.Platform); err != nil {
+			return nil, err
+		}
 	}
 
 	agentctlBin, platform, err := r.prepareRemoteHost(baseCtx, client, req, ctx)
@@ -454,6 +460,11 @@ func (r *SSHExecutor) preflightGitHubCredentialBroker(
 		command string,
 		env map[string]string,
 	) ([]byte, error) {
+		if platform.GOOS == sshRemoteGOOSWindows {
+			stdout, stderr, err := runWindowsScript(ctx, client, `$response=Invoke-WebRequest -UseBasicParsing -Uri $env:KANDEV_GITHUB_CREDENTIAL_BROKER_URL -TimeoutSec 10
+if ($response.StatusCode -ne 204) {throw 'Credential broker not ready'}`, env)
+			return []byte(stdout + stderr), err
+		}
 		envScript, err := buildSSHEnvInitScript(env)
 		if err != nil {
 			return nil, err
@@ -482,6 +493,9 @@ func (r *SSHExecutor) prepareRemoteHost(
 	if err := requireSupportedRemotePlatform(info.Platform); err != nil {
 		r.report(req.OnProgress, "Detecting remote OS", PrepareStepFailed, err.Error())
 		return "", info.Platform, err
+	}
+	if info.Platform.GOOS == sshRemoteGOOSWindows && info.GitVer == "" {
+		return "", info.Platform, errors.New("ssh: Git for Windows is required on the remote host")
 	}
 	r.report(req.OnProgress, "Detecting remote OS", PrepareStepCompleted, info.UnameAll)
 
@@ -1005,7 +1019,7 @@ func (r *SSHExecutor) ResumeRemoteInstance(ctx context.Context, req *ExecutorCre
 		_ = client.Close()
 		return fmt.Errorf("ssh resume: invalid remote agentctl pid %q", pidStr)
 	}
-	alive, err := probeRemoteAgentctlLiveness(ctx, client, pid)
+	alive, err := probeRemoteAgentctlLiveness(ctx, client, pid, sessionDir)
 	if err != nil {
 		_ = client.Close()
 		return fmt.Errorf("ssh resume: probe agentctl pid %d: %w", pid, err)
@@ -1068,6 +1082,7 @@ func (r *SSHExecutor) ResumeRemoteInstance(ctx context.Context, req *ExecutorCre
 		remoteTaskDir:    taskDir,
 		authToken:        req.AuthToken,
 		reusingProcess:   reusingProcess,
+		platform:         windowsPlatformForPath(sessionDir),
 		metadata:         cloneSSHMetadata(req.Metadata),
 		prepareEnv:       sshRemoteContributionEnv(req, agentctlBin),
 		runtimeAPITunnel: runtimeAPITunnel,
@@ -1330,7 +1345,7 @@ func (r *SSHExecutor) GetRemoteStatus(ctx context.Context, instance *ExecutorIns
 	}
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	if !isRemoteAgentctlAlive(probeCtx, client, state.pid) {
+	if !isRemoteAgentctlAlive(probeCtx, client, state.pid, state.remoteDir) {
 		// A concurrent teardown may have closed client after the read above
 		// but before (or during) this probe, so a failed probe alone doesn't
 		// distinguish "agentctl not answering" from "transport lost mid-probe"
@@ -1370,6 +1385,9 @@ func (r *SSHExecutor) maybeUploadCredentials(
 	platform SSHRemotePlatform,
 ) error {
 	if err := r.uploadCredentials(ctx, client, req, platform); err != nil {
+		if platform.GOOS == sshRemoteGOOSWindows {
+			return err
+		}
 		r.logger.Warn(
 			"ssh executor: credential upload failed; launch will proceed but agent may not authenticate",
 			zap.String("task_id", req.TaskID),
@@ -1501,6 +1519,9 @@ func sshShellFromMetadata(md map[string]interface{}) string {
 }
 
 func sshShellForRemote(md map[string]interface{}, platform SSHRemotePlatform) string {
+	if platform.GOOS == sshRemoteGOOSWindows {
+		return sshWindowsPowerShell
+	}
 	if shell := sshShellFromMetadata(md); shell != "" {
 		return shell
 	}

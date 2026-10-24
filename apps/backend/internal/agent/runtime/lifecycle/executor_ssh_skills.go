@@ -44,7 +44,7 @@ func materializeSSHSkillManifest(
 		return fmt.Errorf("SSH skill workspace is required")
 	}
 	taskRoot := path.Clean(strings.TrimSpace(taskDir))
-	if taskRoot == "." || !path.IsAbs(taskRoot) {
+	if taskRoot == "." || (!path.IsAbs(taskRoot) && !isWindowsRemotePath(taskRoot)) {
 		return fmt.Errorf("SSH task directory must be absolute")
 	}
 	var manifest skill.Manifest

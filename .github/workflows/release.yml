@@ -958,11 +958,12 @@ jobs:
             GOOS=linux GOARCH=arm64 CGO_ENABLED=0 CC= go build -trimpath -buildvcs=false -ldflags "$LDFLAGS" -o "$output_dir/agentctl-linux-arm64" ./cmd/agentctl
             GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 CC= go build -trimpath -buildvcs=false -ldflags "$LDFLAGS" -o "$output_dir/agentctl-darwin-amd64" ./cmd/agentctl
             GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 CC= go build -trimpath -buildvcs=false -ldflags "$LDFLAGS" -o "$output_dir/agentctl-darwin-arm64" ./cmd/agentctl
+            GOOS=windows GOARCH=amd64 CGO_ENABLED=0 CC= go build -trimpath -buildvcs=false -ldflags "$LDFLAGS" -o "$output_dir/agentctl-windows-amd64.exe" ./cmd/agentctl
             cd "$GITHUB_WORKSPACE"
           }
           build_helpers "$FIRST"
           build_helpers "$SECOND"
-          for helper in agentctl-linux-amd64 agentctl-linux-arm64 agentctl-darwin-amd64 agentctl-darwin-arm64; do
+          for helper in agentctl-linux-amd64 agentctl-linux-arm64 agentctl-darwin-amd64 agentctl-darwin-arm64 agentctl-windows-amd64.exe; do
             cmp "$FIRST/$helper" "$SECOND/$helper"
             test -x "$FIRST/$helper"
           done
@@ -1098,7 +1099,8 @@ jobs:
             dist/remote-helper-artifact/bin/agentctl-linux-amd64 \
             dist/remote-helper-artifact/bin/agentctl-linux-arm64 \
             dist/remote-helper-artifact/bin/agentctl-darwin-amd64 \
-            dist/remote-helper-artifact/bin/agentctl-darwin-arm64
+            dist/remote-helper-artifact/bin/agentctl-darwin-arm64 \
+            dist/remote-helper-artifact/bin/agentctl-windows-amd64.exe
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: web-bundle
@@ -1251,6 +1253,7 @@ jobs:
           cp dist/remote-helper-artifact/bin/agentctl-linux-arm64 dist/kandev/bin/
           cp dist/remote-helper-artifact/bin/agentctl-darwin-amd64 dist/kandev/bin/
           cp dist/remote-helper-artifact/bin/agentctl-darwin-arm64 dist/kandev/bin/
+          cp dist/remote-helper-artifact/bin/agentctl-windows-amd64.exe dist/kandev/bin/
           if [ "$IS_STABLE" = "true" ] && [ "$COMPACT_RUNTIME_CONTRACT" = "true" ]; then
             cp dist/remote-helper-artifact/manifests/full/remote-helpers.json dist/kandev/remote-helpers.json
             bash scripts/release/package-bundle.sh --bundle-dir dist/kandev --variant full
@@ -2313,7 +2316,8 @@ jobs:
             dist/remote-helper-artifact/bin/agentctl-linux-amd64 \
             dist/remote-helper-artifact/bin/agentctl-linux-arm64 \
             dist/remote-helper-artifact/bin/agentctl-darwin-amd64 \
-            dist/remote-helper-artifact/bin/agentctl-darwin-arm64
+            dist/remote-helper-artifact/bin/agentctl-darwin-arm64 \
+            dist/remote-helper-artifact/bin/agentctl-windows-amd64.exe
 
       - name: Verify staged release assets
         env:
@@ -2396,7 +2400,7 @@ jobs:
           done
           if [ "$COMPACT_RUNTIME_CONTRACT" = "true" ]; then
             cp dist/remote-helper-artifact/assets/*.gz* dist/release-assets/
-            for asset in agentctl-linux-amd64.gz agentctl-linux-arm64.gz agentctl-darwin-amd64.gz agentctl-darwin-arm64.gz; do
+            for asset in agentctl-linux-amd64.gz agentctl-linux-arm64.gz agentctl-darwin-amd64.gz agentctl-darwin-arm64.gz agentctl-windows-amd64.exe.gz; do
               sidecar="dist/release-assets/$asset.sha256"
               if [ ! -f "dist/release-assets/$asset" ] || [ ! -f "$sidecar" ]; then
                 echo "Missing required remote helper asset or checksum: $asset" >&2

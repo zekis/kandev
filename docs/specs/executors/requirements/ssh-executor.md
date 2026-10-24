@@ -40,3 +40,35 @@ Today the only ways to run an agent are: (1) locally on the user's own machine (
 ## System design
 
 The migrated technical source is split into [part 1](../system-design/ssh-executor.md).
+
+## Proposed native Windows extension
+
+The following requirement is proposed and remains unimplemented. The existing
+SSH contract above remains active. Executors owns this extension because it
+owns remote environment construction, controller lifetime, and recovery.
+
+### REQ-EXECUTORS-SSH-EXECUTOR-002: Native Windows destinations
+
+**Intent:** Run an agent directly on an existing Windows machine over SSH,
+including through a forwarding gateway, without requiring WSL or a Linux worker.
+
+#### Acceptance criteria
+
+- **AC-EXECUTORS-SSH-EXECUTOR-002.1:** When a Windows amd64 destination provides OpenSSH with SFTP, Windows PowerShell 5.1 or newer, Git, and a supported installed agent, connection testing shall identify the platform and report missing prerequisites separately from authentication failures.
+- **AC-EXECUTORS-SSH-EXECUTOR-002.2:** When a task starts on that destination, Kandev shall install a verified matching Windows helper and run the selected agent natively in its task workspace, including paths containing spaces and non-ASCII characters.
+- **AC-EXECUTORS-SSH-EXECUTOR-002.3:** When the controller starts, HTTP, WebSocket, terminal, and file operations shall travel through the authenticated SSH connection, including a configured single-hop gateway, without exposing a controller listener to the external network.
+- **AC-EXECUTORS-SSH-EXECUTOR-002.4:** When reconnecting or restarting the backend, Kandev shall reuse a verified live controller; it shall replace a confirmed absent controller while retaining the workspace and conversation, and shall preserve the remote process when its identity or liveness is uncertain.
+- **AC-EXECUTORS-SSH-EXECUTOR-002.5:** When stopping or reclaiming a Windows session, Kandev shall stop only processes proven to belong to that session and shall leave unrelated processes, other sessions, and unverified workspaces untouched.
+- **AC-EXECUTORS-SSH-EXECUTOR-002.6:** When copying credentials or configuration, Kandev shall retain the existing allowlist and merge rules, restrict access to the target account and Windows administrative principals, and avoid secrets in command arguments, logs, or diagnostics. Failure to establish private storage shall prevent launch.
+- **AC-EXECUTORS-SSH-EXECUTOR-002.7:** Existing Linux and macOS SSH execution shall retain its launch, recovery, trust, and cleanup behavior. Unsupported Windows architectures shall fail before helper upload or process launch.
+
+### Extension exclusions
+
+Windows arm64, WSL, automatic OpenSSH installation, creation of Windows users,
+gateway provisioning, password authentication, and changing host-key trust are
+outside this extension. OCGW remains responsible for machine onboarding and the
+reverse tunnel. Agent-specific Windows availability remains a prerequisite.
+
+### Extension delivery
+
+See [the implementation plan](../../../plans/windows-ssh-executor/plan.md).

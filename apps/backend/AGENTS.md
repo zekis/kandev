@@ -166,6 +166,8 @@ replace state verification, installation association, or HMAC verification.
 
 Standalone agentctl is launched in its own process group so terminal Ctrl+C is handled by the backend lifecycle manager first; do not share the backend's foreground group, which bypasses supervised shutdown and can leak ACP subprocesses.
 
+**Native Windows SSH:** the SSH runtime selects PowerShell and checksum-qualified Windows helpers for Windows amd64 targets. Launch uses a detached WMI supervisor, private Windows ACLs, and creation-time/executable/account identity for recovery and stop. Custom Windows scripts use native PowerShell. Embedded shells share `internal/common/ptyexec` with other interactive terminals so Windows uses ConPTY.
+
 **Executor Types** (database model):
 - `local_pc` - Standalone process on host
 - `local_docker` - Docker container on host

@@ -24,7 +24,7 @@ func (r *SSHExecutor) ConfirmAgentctlAbsent(ctx context.Context, instanceID stri
 
 	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	alive, err := probeRemoteAgentctlLiveness(probeCtx, client, pid)
+	alive, err := probeRemoteAgentctlLiveness(probeCtx, client, pid, state.remoteDir)
 	if err != nil || alive {
 		return false, err
 	}
