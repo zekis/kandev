@@ -167,6 +167,7 @@ func provideOrchestrator(
 	if gitCredentialBroker != nil {
 		orchestratorSvc.SetGitHubCredentialBroker(gitCredentialBroker, githubCredentialBrokerEndpoint(cfg))
 	}
+	lifecycleMgr.SetWorkspaceGitEnvironmentResolver(orchestratorSvc.RestoreWorkspaceGitEnvironment)
 	orchestratorSvc.SetAttachmentReader(taskSvc.AttachmentService())
 	orchestratorSvc.SetLaunchAttachmentClaimer(taskSvc)
 	if attachmentSvc := taskSvc.AttachmentService(); attachmentSvc != nil {

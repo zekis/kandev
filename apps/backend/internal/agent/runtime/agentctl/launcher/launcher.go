@@ -23,6 +23,7 @@ import (
 
 	agentctlclient "github.com/kandev/kandev/internal/agent/runtime/agentctl"
 	commonconfig "github.com/kandev/kandev/internal/common/config"
+	"github.com/kandev/kandev/internal/common/launchwrapper"
 	"github.com/kandev/kandev/internal/common/logger"
 	"github.com/kandev/kandev/internal/common/netprobe"
 	"github.com/kandev/kandev/internal/common/processidentity"
@@ -392,7 +393,7 @@ func environmentWithOverrides(base []string, overrides ...string) []string {
 		}
 		result = append(result, entry)
 	}
-	return append(result, overrides...)
+	return launchwrapper.StripServerCredentials(append(result, overrides...))
 }
 
 // performHandshake retrieves agentctl's self-generated auth token using the nonce.

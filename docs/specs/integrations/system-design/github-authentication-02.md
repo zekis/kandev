@@ -86,6 +86,16 @@ post-signature processing failures produce `failing`; a later valid successful d
   is absent. Kandev does not rewrite repository provider identity from partial legacy metadata.
 - Changing the workspace policy affects new launches and the next resume, not an already-running
   process.
+- Workspace-only runtime reconstruction uses the orchestrator's credential preparation through a
+  lifecycle callback after explicit environment sources resolve and before runtime creation.
+  The callback reads current task/session/repository bindings and issues fresh opaque leases through
+  the normal broker; it never clones repositories, restores old leases, or persists provider tokens.
+  Existing runtime admission and persistence gates remain in force. The configured instance
+  environment supplies both new task shells and UI Git commands.
+- The backend reissue signing key is removed from composed task environments, forwarded runtime
+  inheritance, restored configuration snapshots, and final agent/shell environments. Child overrides
+  cannot reintroduce it. Runtime control credentials and explicit permitted task credentials retain
+  their existing contracts. Same-user local execution remains a trusted-host boundary, not OS isolation.
 
 ## Permissions And Security
 

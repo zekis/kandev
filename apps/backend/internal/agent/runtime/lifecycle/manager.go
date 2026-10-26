@@ -82,9 +82,10 @@ type Manager struct {
 	runtimeAvailabilitySubscription bus.Subscription
 
 	// Workspace info provider for on-demand instance creation
-	workspaceInfoProvider          WorkspaceInfoProvider
-	workspaceRecoveryErrorReporter WorkspaceRecoveryErrorReporter
-	turnChangeCaptureHandler       TurnChangeCaptureHandler
+	workspaceGitEnvironmentResolver func(context.Context, string, string, string, map[string]string) (map[string]string, error)
+	workspaceInfoProvider           WorkspaceInfoProvider
+	workspaceRecoveryErrorReporter  WorkspaceRecoveryErrorReporter
+	turnChangeCaptureHandler        TurnChangeCaptureHandler
 
 	// taskRuntimeFences serialize runtime creation with task-scoped cleanup.
 	taskRuntimeFences taskRuntimeOwnershipFences

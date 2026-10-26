@@ -1104,7 +1104,10 @@ func (m *Manager) prepareExecutionCreateRequest(
 	}
 
 	executionProfileID := workspaceExecutionProfileID(info)
-	profileInfo := m.resolveWorkspaceExecutionProfile(ctx, executionProfileID)
+	profileInfo, err := m.resolveWorkspaceExecutionProfile(ctx, executionProfileID)
+	if err != nil {
+		return nil, err
+	}
 	envPreparation, err := m.prepareExecutionEnvironment(
 		ctx, taskID, info, executionID, executionProfileID, agentConfig, profileInfo,
 	)
@@ -1216,18 +1219,18 @@ func (m *Manager) prepareExecutionCreateRequest(
 	return preparation, nil
 }
 
-func (m *Manager) resolveWorkspaceExecutionProfile(ctx context.Context, profileID string) *AgentProfileInfo {
-	if profileID == "" || m.profileResolver == nil {
-		return nil
+func (m *Manager) resolveWorkspaceExecutionProfile(ctx context.Context, profileID string) (*AgentProfileInfo, error) {
+	if profileID == "" {
+		return nil, nil
+	}
+	if m.profileResolver == nil {
+		return nil, errors.New("workspace execution profile resolver is unavailable")
 	}
 	profileInfo, err := m.profileResolver.ResolveProfile(ctx, profileID)
-	if err != nil {
-		m.logger.Warn("failed to resolve profile for workspace execution",
-			zap.String("execution_profile_id", profileID),
-			zap.Error(err))
-		return nil
+	if err != nil || profileInfo == nil {
+		return nil, errors.New("workspace execution profile is unavailable")
 	}
-	return profileInfo
+	return profileInfo, nil
 }
 
 func (m *Manager) prepareExecutionEnvironment(
@@ -1267,6 +1270,12 @@ func (m *Manager) prepareExecutionEnvironment(
 	env, err := m.buildEnvForExecution(ctx, executionID, managedReq, agentConfig, profileInfo)
 	if err != nil {
 		return nil, fmt.Errorf("build recovered environment: %w", err)
+	}
+	if m.workspaceGitEnvironmentResolver != nil {
+		env, err = m.workspaceGitEnvironmentResolver(ctx, taskID, info.SessionID, info.ExecutorType, env)
+		if err != nil {
+			return nil, fmt.Errorf("authorize restored workspace Git environment: %w", err)
+		}
 	}
 	if len(env) == 0 {
 		env = nil
