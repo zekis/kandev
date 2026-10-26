@@ -106,7 +106,7 @@ func benchmarkRetentionEvent(b *testing.B, repo *Repository, event *models.Agent
 	return time.Since(started)
 }
 
-func newRetentionBenchmarkRepo(b *testing.B, engine string) *Repository {
+func newRetentionBenchmarkRepo(b testing.TB, engine string) *Repository {
 	b.Helper()
 	var writer *sqlx.DB
 	var reader *sqlx.DB

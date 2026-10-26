@@ -109,7 +109,7 @@ Initialization errors remain fatal and cannot recover inside the same process. T
 ### SQLite schema probe batching
 
 SQLite health checks fetch the existing names for all distinct required tables
-in one catalog query through the shared writer. The required-store catalog
+in one catalog query through the shared WAL reader after the writer ping succeeds. The required-store catalog
 remains the only source of the requested names. `internal/db` owns the
 context-aware schema helper and its SQL. Bind table names as values and finish
 reading and closing the result before publishing probe outcomes.
@@ -117,8 +117,8 @@ reading and closing the result before publishing probe outcomes.
 The probe still pings the shared writer and reader first. It retains the same
 two-second total deadline, periodic interval, maintenance lease, and startup
 rules. It does not create another pool, use a reader-only health path, or treat
-a timeout as success. Batching removes repeated writer checkout between table
-checks. It does not guarantee service when a single checkout exceeds the
+a timeout as success. Batching removes repeated catalog queries. Reading the inventory through the
+reader prevents a second writer checkout after the mandatory writer ping. It does not guarantee service when a single checkout exceeds the
 existing deadline.
 
 A successful inventory produces one result for every descriptor. Missing
@@ -130,7 +130,7 @@ existing sanitized diagnostics, `table_probe` stage, and one failure diagnostic
 per sweep. A later successful inventory recovers runtime health normally.
 
 The PostgreSQL probe retains its existing path. Any portable schema helper must
-preserve current-schema selection and parameter rebinding. A dedicated reader,
+preserve current-schema selection and parameter rebinding. A new dedicated pool,
 a longer timeout, altered maintenance priority, and retention scheduling are
 separate proposals outside this optimization.
 
