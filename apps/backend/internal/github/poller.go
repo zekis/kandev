@@ -307,10 +307,17 @@ func (p *Poller) tryBatchedPRWatchCheck(ctx context.Context, watches []*PRWatch)
 			}
 			continue
 		}
+		state := prWatchBatchCompleted
+		for _, result := range workspaceResults {
+			if isPRDiscoveryDeferred(result.discoveryErr) {
+				state = prWatchBatchDeferred
+				break
+			}
+		}
 		outcomes = append(outcomes, prWatchWorkspaceBatchOutcome{
 			workspaceID: workspaceID,
 			watches:     workspaceWatches,
-			state:       prWatchBatchCompleted,
+			state:       state,
 			results:     workspaceResults,
 		})
 		p.publishBatchedPRWatchResults(ctx, workspaceResults)
@@ -365,7 +372,7 @@ func fallbackEligiblePRWatches(outcomes []prWatchWorkspaceBatchOutcome) []*PRWat
 }
 
 func prWatchBatchFallbackAllowed(err error) bool {
-	if err == nil || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+	if err == nil || isPRDiscoveryDeferred(err) {
 		return false
 	}
 	category := classifyPRDiscoveryError(err)

@@ -272,3 +272,38 @@ existing handling. This package adds no independent retry loop.
 See [the implementation plan](../../../plans/watch-task-cleanup/plan.md).
 Use deterministic clock tests for exact 2-hour and 24-hour boundaries,
 restart, mixed groups, passive reads, explicit refresh, and fallback fairness.
+
+## Deferred branch follow-up reads
+
+Discovery HEALTH AC .3 and .5 and POLLING-002 AC .4 apply to every
+provider stage, including fork metadata and exact-head parent lookup after a
+successful empty branch batch. `ResolvedEmpty` settles only the queried
+repository; it does not settle an unqueried fork parent.
+
+Preserve `AdmissionDeferredError` through the searching-watch result and shared
+attempt boundaries. A local admission deferral is neither provider failure nor
+successful discovery. Release the attempt without changing existing failure
+state, and keep unfinished targets eligible for a later bounded poll attempt.
+Do not stamp a deferred target as successfully checked or route a deferral into
+per-watch fallback. Preserve completed numbered and searching outcomes in a
+mixed batch, including their event publication.
+
+Run branch follow-up reads before optional workflow-attention enrichment so
+discovery receives an admission opportunity. Order those reads by oldest
+`LastCheckedAt`, with never-checked targets first, so a completed branch cannot
+starve its deferred siblings. Share each follow-up outcome within the batch.
+
+Retain completed provider stages across deferred follow-up work where replay
+would repeatedly consume the available admission slot. Reuse existing scoped
+batch progress and fork metadata caching; bind any additional continuation to
+workspace, credential scope/generation, target, and explicit-refresh mode.
+The existing fork metadata cache and unchanged timestamps for deferred targets
+provide this repair's cross-poll progress; no new persisted continuation is
+needed. Invalidate additional continuation on credential replacement and target
+changes. Do not wait while holding a background worker or bypass the rate
+coordinator. A completed empty
+lookup clears only its own target failure. Real missing repositories, denied
+requests, provider failures, and unresolved partial aliases retain their error
+semantics and never become authoritative negatives.
+
+Delivery: [branch follow-up repair](../../../plans/github-branch-discovery-deferral/plan.md).

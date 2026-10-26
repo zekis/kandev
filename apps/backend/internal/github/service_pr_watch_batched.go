@@ -25,6 +25,7 @@ type PRWatchSyncResult struct {
 	// a later database write failed. It keeps health admission focused on
 	// provider evidence rather than task persistence.
 	DiscoveryResolved bool
+	discoveryErr      error
 }
 
 const prSyncExplicitRefreshKeySuffix = "|explicit-refresh"
@@ -224,8 +225,13 @@ func (s *Service) syncWatchesBatchedWithClient(
 
 		s.completePRDiscoveryWatchAttempt(
 			group.attempt, representativeResult.Status, representativeResult.DiscoveryResolved,
-			representativeResult.SyncFailed, nil, false,
+			representativeResult.SyncFailed, representativeResult.discoveryErr, false,
 		)
+		if representativeResult.discoveryErr != nil {
+			s.finishPRDiscoveryWatchFailure(workspaceID, cacheScope, credentialGeneration, group.attempt, representativeResult.discoveryErr)
+			s.forgetPRDiscoveryWatchAttempt(workspaceID, cacheScope, credentialGeneration, group.attempt)
+			continue
+		}
 		if representativeResult.DiscoveryResolved {
 			s.finishPRDiscoveryWatchSuccess(
 				workspaceID, cacheScope, credentialGeneration, group.attempt,
@@ -268,6 +274,12 @@ func (s *Service) syncWatchesBatchedWithClient(
 	for _, group := range joinedGroups {
 		status, resolved, syncFailed, sharedErr, suppressFallback := group.attempt.result.wait(ctx)
 		if sharedErr != nil {
+			if isPRDiscoveryDeferred(sharedErr) {
+				for _, watch := range group.watches {
+					resultsByWatch[watch] = searchingWatchErrorResult(watch, sharedErr)
+				}
+				continue
+			}
 			if suppressFallback {
 				continue
 			}
@@ -506,6 +518,7 @@ func workflowAttentionBatchKey(cacheScope, owner, repo, headSHA string) string {
 type batchedWatchStatuses struct {
 	byKey               map[string]*PRStatus
 	branchResolvedEmpty map[string]struct{}
+	branchLookups       map[string]searchingWatchLookup
 }
 
 // fetchBatchedWatchStatuses runs the numbered- and branch-keyed GraphQL
@@ -560,6 +573,7 @@ func (s *Service) fetchBatchedWatchStatuses(
 			s.finishBatchedBranchQueryProgress(key, branchProgress, keepBatchedPRProgress(err))
 			return nil, err
 		}
+		s.fetchSearchingWatchLookups(fetchCtx, client, cacheScope, searching, combined)
 		s.enrichBatchedWorkflowAttention(fetchCtx, client, cacheScope, combined.byKey)
 		s.finishBatchedPRQueryProgress(key, prProgress, false)
 		s.finishBatchedBranchQueryProgress(key, branchProgress, false)
@@ -852,14 +866,19 @@ func (s *Service) lookupSearchingWatchPR(
 func (s *Service) applyBatchedSearchingWatch(
 	ctx context.Context, client Client, cacheScope string, w *PRWatch, statuses *batchedWatchStatuses, now time.Time,
 	skipFallback, sharedResolved, sharedSyncFailed bool,
-) PRWatchSyncResult {
+) (result PRWatchSyncResult) {
+	if err := ctx.Err(); err != nil {
+		return searchingWatchErrorResult(w, err)
+	}
 	// Read the previous probe time before the stamp below overwrites it —
 	// lookupSearchingWatchPR throttles on it.
 	lastChecked := w.LastCheckedAt
-	// Timestamps get bumped on both the "no PR found" and "PR detected"
-	// paths, so hoist the single call above the branch to make that
-	// invariant obvious.
-	_ = s.store.UpdatePRWatchTimestamps(ctx, w.ID, now, nil, "", "")
+	// Local admission and cancellation leave the target eligible for retry.
+	defer func() {
+		if !isPRDiscoveryDeferred(result.discoveryErr) {
+			_ = s.store.UpdatePRWatchTimestamps(ctx, w.ID, now, nil, "", "")
+		}
+	}()
 	if s.isRepoCachedAsMissingForScope(cacheScope, w.Owner, w.Repo) {
 		return PRWatchSyncResult{Watch: w, SyncFailed: true}
 	}
@@ -870,11 +889,15 @@ func (s *Service) applyBatchedSearchingWatch(
 		if skipFallback {
 			return PRWatchSyncResult{Watch: w, DiscoveryResolved: sharedResolved, SyncFailed: sharedSyncFailed}
 		}
-		pr, attempted, err := s.lookupSearchingWatchPR(ctx, client, cacheScope, w, branchKey, statuses, lastChecked)
+		lookup, prefetched := statuses.branchLookups[branchKey]
+		if !prefetched {
+			lookup.pr, lookup.attempted, lookup.err = s.lookupSearchingWatchPR(ctx, client, cacheScope, w, branchKey, statuses, lastChecked)
+		}
+		pr, attempted, err := lookup.pr, lookup.attempted, lookup.err
 		if err != nil {
 			s.logger.Debug("failed to search parent repository for PR",
 				zap.String("watch_id", w.ID), zap.String("branch", w.Branch), zap.Error(err))
-			return PRWatchSyncResult{Watch: w, SyncFailed: true}
+			return searchingWatchErrorResult(w, err)
 		}
 		if !attempted {
 			return PRWatchSyncResult{Watch: w}
