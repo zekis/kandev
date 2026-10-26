@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/kandev/kandev/internal/common/launchwrapper"
 	"github.com/kandev/kandev/internal/common/logger"
 	"github.com/kandev/kandev/internal/common/ptyexec"
 	"go.uber.org/zap"
@@ -642,7 +643,7 @@ func buildShellEnv(workDir string, overrides map[string]string) []string {
 	env = append(env, "LANG=C.UTF-8")
 	env = append(env, "LC_ALL=C.UTF-8")
 
-	return env
+	return launchwrapper.StripServerCredentials(env)
 }
 
 func upsertShellEnv(env []string, key, value string) []string {

@@ -47,7 +47,7 @@ func TestManagerTrackerGitEnvironmentUsesInstanceEnvironment(t *testing.T) {
 		"GIT_TERMINAL_PROMPT":            "0",
 		"GCM_INTERACTIVE":                "Never",
 		"GCM_GUI_PROMPT":                 "0",
-		"GIT_ASKPASS":                    "exit 1",
+		"GIT_ASKPASS":                    "",
 		"SSH_ASKPASS":                    "exit 1",
 		"SSH_ASKPASS_REQUIRE":            "never",
 		"GIT_SSH_COMMAND":                "ssh -oBatchMode=yes",

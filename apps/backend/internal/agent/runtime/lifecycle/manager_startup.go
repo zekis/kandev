@@ -16,6 +16,7 @@ import (
 	agentctl "github.com/kandev/kandev/internal/agent/runtime/agentctl"
 	"github.com/kandev/kandev/internal/agent/runtime/routingerr"
 	"github.com/kandev/kandev/internal/common/appctx"
+	"github.com/kandev/kandev/internal/common/launchwrapper"
 	"github.com/kandev/kandev/internal/events"
 	"github.com/kandev/kandev/internal/task/models"
 )
@@ -515,24 +516,27 @@ func (m *Manager) finalizeBootMessage(execution *AgentExecution, msg *models.Mes
 // buildEnvForExecution builds environment variables for any runtime.
 // This is the unified method used by the runtime interface.
 func (m *Manager) buildEnvForExecution(ctx context.Context, executionID string, req *LaunchRequest, agentConfig agents.Agent, profileInfo *AgentProfileInfo) (map[string]string, error) {
-	if req.EnvironmentFinalized {
-		env := cloneStringMap(req.Env)
-		if err := spillLargeWakePayloadEnv(env, req.WorkspacePath, m.logger.Zap()); err != nil {
-			return nil, err
-		}
-		return env, nil
+	var env map[string]string
+	var err error
+	switch {
+	case req.EnvironmentFinalized:
+		env = cloneStringMap(req.Env)
+	case req.EnvironmentResolutionRequired:
+		env, err = m.resolveStrictEnvironment(ctx, executionID, req, agentConfig, profileInfo)
+	default:
+		env, err = m.buildLegacyEnvForExecution(ctx, executionID, req, agentConfig, profileInfo)
 	}
-	if req.EnvironmentResolutionRequired {
-		env, err := m.resolveStrictEnvironment(ctx, executionID, req, agentConfig, profileInfo)
-		if err != nil {
-			return nil, err
-		}
-		if err := spillLargeWakePayloadEnv(env, req.WorkspacePath, m.logger.Zap()); err != nil {
-			return nil, err
-		}
-		return env, nil
+	if err != nil {
+		return nil, err
 	}
+	launchwrapper.RemoveServerCredentials(env)
+	if err := spillLargeWakePayloadEnv(env, req.WorkspacePath, m.logger.Zap()); err != nil {
+		return nil, err
+	}
+	return env, nil
+}
 
+func (m *Manager) buildLegacyEnvForExecution(ctx context.Context, executionID string, req *LaunchRequest, agentConfig agents.Agent, profileInfo *AgentProfileInfo) (map[string]string, error) {
 	env := make(map[string]string)
 
 	// Copy request environment
@@ -582,10 +586,6 @@ func (m *Manager) buildEnvForExecution(ctx context.Context, executionID string, 
 	}
 	if req.managedGoCachePath != "" {
 		env["GOCACHE"] = req.managedGoCachePath
-	}
-
-	if err := spillLargeWakePayloadEnv(env, req.WorkspacePath, m.logger.Zap()); err != nil {
-		return nil, err
 	}
 
 	return env, nil

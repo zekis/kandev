@@ -78,7 +78,7 @@ printf 'AMBIENT_ONLY=%s\n' "${AMBIENT_ONLY-}"
 		"GIT_TERMINAL_PROMPT":     "0",
 		"GCM_INTERACTIVE":         "Never",
 		"GCM_GUI_PROMPT":          "0",
-		"GIT_ASKPASS":             "exit 1",
+		"GIT_ASKPASS":             "",
 		"SSH_ASKPASS":             "exit 1",
 		"SSH_ASKPASS_REQUIRE":     "never",
 		"GIT_SSH_COMMAND":         "ssh -oBatchMode=yes -i /selected/key -oBatchMode=no",
@@ -215,7 +215,7 @@ printf 'SSH_ASKPASS_REQUIRE=%s\n' "${SSH_ASKPASS_REQUIRE-}"
 			"GIT_TERMINAL_PROMPT": "0",
 			"GCM_INTERACTIVE":     "Never",
 			"GCM_GUI_PROMPT":      "0",
-			"GIT_ASKPASS":         "exit 1",
+			"GIT_ASKPASS":         "",
 			"SSH_ASKPASS":         "exit 1",
 			"SSH_ASKPASS_REQUIRE": "never",
 		} {

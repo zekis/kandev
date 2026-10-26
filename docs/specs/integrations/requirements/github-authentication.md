@@ -5,6 +5,7 @@ created: 2026-07-19
 owners:
   - Kandev
 ---
+
 # Workspace GitHub Authentication Requirements
 
 ## Overview
@@ -34,6 +35,9 @@ GitHub credentials must not silently cross workspace boundaries. A local workspa
 - **AC-INTEGRATIONS-GITHUB-AUTHENTICATION-001.13:** The public guide shall explain historical managed defaults, preserved upgrade policies, and recovery through explicit task-access selection. It shall distinguish managed checkouts, user-managed checkouts, and remote executors.
 - **AC-INTEGRATIONS-GITHUB-AUTHENTICATION-001.14:** When the managed `gh` shim resolves the real GitHub CLI, it shall skip every `PATH` candidate inside a Kandev shim directory, whichever `agentctl` that candidate links to or copies, and every candidate that is the running `agentctl` executable. A nested shim invocation below a fixed depth bound shall still launch the real CLI, so a `gh` extension that calls `gh` keeps working. At the bound the shim shall fail with an error that names the nesting and shall launch no process.
 - **AC-INTEGRATIONS-GITHUB-AUTHENTICATION-001.15:** When a managed task launches and no per-run environment overlay has been delivered for the execution, the agent subprocess shall receive the launch-composed environment unchanged, including the managed helper path, broker URL, and lease that its generated credential helper entries expand.
+
+- **AC-INTEGRATIONS-GITHUB-AUTHENTICATION-001.16:** Reconstructing a task workspace runtime after server or runtime restart shall rebuild managed Git authorization from current task, session, repository, and workspace bindings before starting new task shells or UI Git commands. Missing bindings, revoked grants, and unavailable explicit credential profiles shall fail closed. Explicit permitted task credentials retain precedence; old leases and runtime snapshots are not authorization.
+- **AC-INTEGRATIONS-GITHUB-AUTHENTICATION-001.17:** The server Git credential reissue signing key shall be absent from child agent, task-shell, and forwarded runtime environments on fresh launch and restoration, including after environment overrides. Only scoped lease/reissue capabilities belong in managed task environments. This environment contract does not provide OS isolation from a same-user local executor.
 
 ### REQ-INTEGRATIONS-GITHUB-AUTHENTICATION-002: Executor HTTPS access through host GitHub CLI
 

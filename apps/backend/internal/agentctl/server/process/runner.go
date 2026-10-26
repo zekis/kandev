@@ -37,6 +37,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/kandev/kandev/internal/agentctl/types"
+	"github.com/kandev/kandev/internal/common/launchwrapper"
 	"github.com/kandev/kandev/internal/common/logger"
 	"go.uber.org/zap"
 )
@@ -891,7 +892,7 @@ func mergeEnvWithStrip(env map[string]string, stripEnv []string) []string {
 	for k, v := range base {
 		merged = append(merged, fmt.Sprintf("%s=%s", k, v))
 	}
-	return merged
+	return launchwrapper.StripServerCredentials(merged)
 }
 
 // isNpmEnvVar returns true if the key is an npm-related environment variable

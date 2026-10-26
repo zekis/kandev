@@ -10,7 +10,7 @@ const (
 	gitTerminalPromptAssignment = "GIT_TERMINAL_PROMPT=0"
 	gcmInteractiveAssignment    = "GCM_INTERACTIVE=Never"
 	gcmGUIPromptAssignment      = "GCM_GUI_PROMPT=0"
-	gitAskpassAssignment        = "GIT_ASKPASS=exit 1"
+	gitAskpassAssignment        = "GIT_ASKPASS="
 	sshAskpassAssignment        = "SSH_ASKPASS=exit 1"
 	sshAskpassRequireAssignment = "SSH_ASKPASS_REQUIRE=never"
 	defaultGitSSHCommand        = "ssh -oBatchMode=yes"

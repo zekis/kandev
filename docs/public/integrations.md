@@ -186,6 +186,10 @@ path on desktop hover or focus and in a touch-accessible drawer on mobile.
   through Kandev's task/repository-scoped broker. Kandev provides a short-lived Git helper and `gh`
   shim; stored PATs and App private keys are not exposed to the task. An executor-profile
   `GH_TOKEN` or `GITHUB_TOKEN` takes precedence.
+  When Kandev reconstructs a task runtime after a restart, it checks the current task and repository
+  access before restoring the helper for new terminals and UI Git operations. A removed connection
+  or revoked repository grant cannot be recovered through an old lease. The server signing key is
+  excluded from child environments; same-user local tasks still run within the trusted host account.
 - **Inherit executor Git credentials** does not install Kandev's helper or `gh` shim. Local and
   Worktree tasks use host Git credentials. For GitHub HTTPS remotes, Kandev checks the host
   account's `gh` login for each attached GitHub host. When `gh auth token` succeeds, Kandev adds a
