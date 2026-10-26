@@ -175,7 +175,9 @@ func (h *Health) probeSQLiteCatalog(ctx context.Context) ([]error, *probeFailure
 	for _, descriptor := range h.tracker.catalog {
 		tables = append(tables, descriptor.RequiredTables...)
 	}
-	existing, err := db.ExistingSQLiteTablesContext(ctx, h.pool.Writer(), tables)
+	// Writer admission was checked by pingObserved. Schema reads use the WAL
+	// reader so they do not queue for the single writer a second time.
+	existing, err := db.ExistingSQLiteTablesContext(ctx, h.pool.Reader(), tables)
 	results := make([]error, len(h.tracker.catalog))
 	if err != nil {
 		for index := range results {

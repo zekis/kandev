@@ -158,6 +158,14 @@ backend actions for another attached repository. PAT/CLI `gh` commands still rec
 bearer grant described above. Explicit executor-profile tokens bypass these managed guarantees and
 must be scoped and rotated independently.
 
+When the managed Git helper or `gh` shim receives `503 persistence_unavailable`,
+it retries credential acquisition with bounded jitter for up to 60 seconds
+(and at most 32 attempts). This allows a temporary database contention window
+to clear. A shorter caller deadline still applies. Persistent database failures
+remain blocked; this response does not mean you need to reconnect GitHub.
+The helper does not retry Git pushes, PR creation, provider failures, or ambiguous
+network errors, and it does not change the selected credential scope.
+
 ### Choose task Git credentials
 
 Within **Workspace GitHub access**, select **Connect GitHub** or **Change connection** to manage

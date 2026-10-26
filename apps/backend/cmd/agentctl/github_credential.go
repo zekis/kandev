@@ -130,14 +130,17 @@ func (c *githubCredentialBrokerClient) resolve(ctx context.Context) (*githubBrok
 }
 
 func (c *githubCredentialBrokerClient) resolveWithReissue(ctx context.Context) (*githubBrokerCredential, error) {
-	credential, err := c.resolve(ctx)
+	ctx, cancel := context.WithTimeout(ctx, credentialAcquisitionTimeout)
+	defer cancel()
+	attempts := 0
+	credential, err := c.resolveWithPersistenceRetry(ctx, &attempts)
 	if err == nil || !isReissuableLeaseError(err) || strings.TrimSpace(c.request.ReissueCapability) == "" {
 		return credential, err
 	}
 	if err := c.reissue(ctx); err != nil {
 		return nil, err
 	}
-	return c.resolve(ctx)
+	return c.resolveWithPersistenceRetry(ctx, &attempts)
 }
 
 func (c *githubCredentialBrokerClient) reissue(ctx context.Context) error {

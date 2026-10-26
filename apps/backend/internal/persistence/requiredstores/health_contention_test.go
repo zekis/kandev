@@ -22,8 +22,7 @@ func TestPersistenceContentionFixture(t *testing.T) {
 		{name: "reader pool", stage: "reader_ping", poolToHold: "reader"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			writer := openSingleConnectionSQLite(t)
-			reader := openSingleConnectionSQLite(t)
+			writer, reader := openHealthContentionPools(t)
 			pool := db.NewPool(writer, reader)
 			t.Cleanup(func() { _ = pool.Close() })
 			if _, err := writer.Exec("CREATE TABLE required_probe (id TEXT PRIMARY KEY)"); err != nil {
