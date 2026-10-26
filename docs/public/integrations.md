@@ -109,6 +109,8 @@ The **PR discovery failed** warning is separate from the quota values:
 - **Rate limited** means the provider delayed discovery. Kandev waits for the reported or calculated retry time instead of repeating the same request.
 - A warning for one workspace or repository does not mark another workspace healthy or unhealthy. Replacing the workspace connection starts a new credential-scoped health state.
 
+A completed search with no open pull request is successful. Waiting for Kandev's local request queue does not create a discovery failure or clear an earlier one.
+
 When discovery succeeds, the warning clears and the status revision advances. If the warning remains after a quota refresh, wait for the retry time or verify the selected connection and repository scope.
 
 #### Pull request watch freshness

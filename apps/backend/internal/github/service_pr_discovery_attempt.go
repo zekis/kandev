@@ -359,6 +359,10 @@ func (s *Service) finishPRDiscoveryWatchSuccess(
 func (s *Service) finishPRDiscoveryWatchFailure(
 	workspaceID, cacheScope string, credentialGeneration int64, attempt prDiscoveryWatchAttempt, err error,
 ) {
+	if isPRDiscoveryDeferred(err) {
+		s.releasePRDiscoveryWatch(workspaceID, cacheScope, credentialGeneration, attempt)
+		return
+	}
 	if health := s.ensurePRDiscoveryHealth(); health != nil {
 		health.finishFailure(
 			workspaceID, cacheScope, credentialGeneration, attempt.target, attempt.number,

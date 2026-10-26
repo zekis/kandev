@@ -2093,7 +2093,10 @@ func (s *Service) detectPRForWatchOnce(
 			watch.WorkspaceID, resolved.CacheScope, credentialGeneration, attempt,
 		)
 	}
-	// Stamp last_checked_at regardless of outcome — including on error. The
+	if isPRDiscoveryDeferred(err) {
+		return nil, err
+	}
+	// Stamp completed provider attempts, including provider errors. The
 	// flood this fixes IS the error path (an unresolvable repo makes `gh` exit
 	// non-zero), so stamping only on success would leave the bug unfixed. The
 	// tradeoff: a transient GitHub error throttles the next on-demand probe for
